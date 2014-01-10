@@ -14,7 +14,7 @@
     </div>
     <div id="stats">Scale: <span id="scale"></span> Offset: <span id="offsetX"></span>, <span id="offsetY"></span></div>
     <div id="log"></div>
-    <canvas id="webgl_canvas" width="400" height="400"></canvas>
+    <canvas id="webgl_canvas" width="400" height="400">Your browser doesn't appear to support canvas :(</canvas>
     <script type="text/javascript" src="webgl-utils.js"></script>
     <script type="text/javascript" src="fractagl.js"></script>
     <script id="vshader" type="text/x-shader">
@@ -67,6 +67,9 @@
         var canvas = document.getElementById('webgl_canvas');
         resizeCanvas(canvas);
         var gl = canvas.getContext('experimental-webgl');
+        if (gl === null || typeof gl === 'undefined') {
+            throw "Unable to get WebGL context. You need a browser that supports WebGL and has it enabled.";
+        }
 
         // For mouse dragging
         var dragStartedAt;
