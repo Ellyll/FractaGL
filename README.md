@@ -23,3 +23,10 @@ The WebGL fractal generation code comes from Erik Möller's WebGL 101
 The full screen code was written thanks to [Craig
 Buckler](http://www.sitepoint.com/author/craig-buckler/)'s article [How to Use
 the HTML5 Full-Screen API](http://www.sitepoint.com/html5-full-screen-api/).
+
+TODO
+----
+* More testing
+* Fix scaling so image doesn't get squashed depending on browser window size
+* Improve pinch zoom, sometimes doesn't feel quite right
+* Add rotation?
