@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scaleable=no, minimum-scale=1, maximum-scale=1" />
+    <title>FractaGL</title>
+    <link rel="stylesheet" type="text/css" href="fractagl.css" />
+</head>
+<body id="body" onresize="resize()">
+    <div id="full_screen_box" onclick="goFullScreen()" title="Full screen">[ ]</div>
+    <div id="zoom_box">
+        <div id="zoom_in" onmousedown="doAction('zoomin')" onmouseup="stopAction('zoomin')" title="Zoom in">+</div>
+        <div id="zoom_out" onmousedown="doAction('zoomout')" onmouseup="stopAction('zoomout')" title="Zoom out">&ndash;</div>
+    </div>
+    <div id="stats">Scale: <span id="scale"></span> Offset: <span id="offsetX"></span>, <span id="offsetY"></span></div>
+    <div id="log"></div>
+    <canvas id="webgl_canvas" width="400" height="400"></canvas>
+    <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="fractagl.js"></script>
+    <script id="vshader" type="text/x-shader">
+        attribute vec2 aVertexPosition;
+
+        void main() {
+            gl_Position = vec4(aVertexPosition, 0, 1);
+        }
+    </script>
+    <script id="fshader" type="text/x-shader">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+    #else
+        precision mediump float;
+    #endif
+        precision mediump int;
+        uniform vec2 uCanvasSize;
+        uniform vec2 uOffset;
+        uniform float uScale;
+
+        vec4 calc(vec2 texCoord) {
+            float x = 0.0;
+            float y = 0.0;
+            float v = 10000.0;
+            float j = 10000.0;
+            for (int iteration = 0 ; iteration < 100 ; iteration++) {
+                float xtemp = x*x-y*y+texCoord.x;
+                y = 2.0*x*y+texCoord.y;
+                x = xtemp;
+                v = min(v, abs(x*x+y*y));
+                j = min(j, abs(x*y));
+                if (x*x+y*y >= 8.0) {
+                    float d = (float(iteration) - (log(log(sqrt(x*x+y*y))) / log(2.0))) / 50.0;
+                    v = (1.0 - v) / 2.0;
+                    j = (1.0 - j) / 2.0;
+                    return vec4(d+j, d, d+v, 1);
+                }
+            }
+            return vec4(0,0,0,1);
+        }
+
+        void main() {
+            vec2 texCoord = (gl_FragCoord.xy / uCanvasSize.xy) * 2.0 - vec2(1.0, 1.0);
+            texCoord = texCoord * uScale + uOffset;
+            gl_FragColor = calc(texCoord);
+        }
+    </script>
+    <script type="text/javascript">
+        var logger = new Logger();
+        var canvas = document.getElementById('webgl_canvas');
+        resizeCanvas(canvas);
+        var gl = canvas.getContext('experimental-webgl');
+
+        // For mouse dragging
+        var dragStartedAt;
+        var dragEndedAt;
+        var dragOk;
+
+        var stats = {
+            scale: document.getElementById('scale'),
+            offsetX: document.getElementById('offsetX'),
+            offsetY: document.getElementById('offsetY')
+        };
+
+        var logQueue = new Array(10);
+        var logQueueIndex = 0;
+
+        var offset = [ -0.5, 0 ];
+        var scale = 1.35;
+        var iv = null;
+        var actions = {};
+        var keyMappings = {
+            '37': 'panleft',
+            '38': 'panup',
+            '39': 'panright',
+            '40': 'pandown',
+            '90': 'zoomin',
+            '88': 'zoomout'
+        };
+        for (var k in keyMappings) {
+            if (keyMappings.hasOwnProperty(k)) {
+                actions[keyMappings[k]] = false;
+            }
+        }
+        var vertexPosBuffer = screenQuad();
+
+        var vs = document.getElementById('vshader').textContent;
+        var fs = document.getElementById('fshader').textContent;
+        var program = createProgram(vs, fs);
+        gl.useProgram(program);
+        program.vertexPosAttrib = gl.getAttribLocation(program, 'aVertexPosition');
+        program.canvasSizeUniform = gl.getUniformLocation(program, 'uCanvasSize');
+        program.offsetUniform = gl.getUniformLocation(program, 'uOffset');
+        program.scaleUniform = gl.getUniformLocation(program, 'uScale');
+        gl.enableVertexAttribArray(program.vertexPosAttrib);
+        gl.vertexAttribPointer(program.vertexPosAttrib, vertexPosBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        window.onkeydown = function(e) {
+            var kc = e.keyCode.toString();
+            if (keyMappings.hasOwnProperty(kc)) {
+                actions[keyMappings[kc]] = true;
+                if (!iv) {
+                    iv = setInterval('draw();', 16);
+                }
+            }
+        };
+
+        window.onkeyup = function(e) {
+            var kc = e.keyCode.toString();
+            if (keyMappings.hasOwnProperty(kc)) {
+                actions[keyMappings[kc]] = false;
+            }
+            for (var j in keyMappings) {
+                if (keyMappings.hasOwnProperty(j)) {
+                    if (actions[keyMappings[j]]) {
+                        return;
+                    }
+                }
+            }
+            clearInterval(iv);
+            iv = null;
+        };
+
+        addListeners(canvas);
+        draw();
+    </script>
+</body>
+</html>
